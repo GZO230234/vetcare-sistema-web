@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 
 function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',
@@ -27,7 +28,7 @@ function Register() {
     setFormData(prev => ({...prev, [name]: value}));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -41,8 +42,33 @@ function Register() {
       return;
     }
 
-    console.log('Datos de registro exitoso (frontend):', formData);
-    // Aquí se llamará al API del backend
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: formData.nombres,
+          apellidos: formData.apellidos,
+          correo: formData.correo,
+          telefono: formData.telefono,
+          direccion: formData.direccion,
+          codigoPostal: formData.codigoPostal,
+          contrasena: formData.contrasena
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Hubo un error al registrarse.');
+      } else {
+        alert('Registro exitoso. ¡Ahora puedes iniciar sesión!');
+        navigate('/login');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('No se pudo conectar al servidor.');
+    }
   };
 
   return (

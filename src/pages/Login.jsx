@@ -1,22 +1,44 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Auth.css';
 
 function Login() {
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [recuerdame, setRecuerdame] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Intento de login:', { correo, contrasena, recuerdame });
-    // Aquí se llamará al API del backend
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo, contrasena })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error || 'Hubo un error al iniciar sesión.');
+      } else {
+        // Redirigir al dashboard pasando los datos del usuario
+        navigate('/dashboard', { state: { user: data.user } });
+      }
+    } catch (err) {
+      console.error(err);
+      setError('No se pudo conectar al servidor.');
+    }
   };
 
   return (
     <div className="auth-container">
       <div className="auth-box">
         <h2>Iniciar Sesión en Vetcare</h2>
+        {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label>Correo Electrónico</label>
