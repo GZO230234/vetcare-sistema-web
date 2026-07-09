@@ -2,6 +2,15 @@ import { Link } from 'react-router-dom';
 import '../App.css';
 
 function Home() {
+  const handleSecretClick = () => {
+    const pwd = prompt("Contraseña:");
+    if (pwd === "huellitas123") {
+      window.location.href = "/register-employee";
+    } else if (pwd !== null) {
+      alert("Contraseña incorrecta");
+    }
+  };
+
   return (
     <div className="vetcare-container">
       <header className="vetcare-header">
@@ -35,12 +44,19 @@ function Home() {
             </div>
             <div className="footer-section">
               <h3>Dirección</h3>
-              <p>Calle Falsa 123</p>
-              <p>Ciudad, País</p>
+              <p>Blvrd Juan Pablo II 1302</p>
+              <p>Ex hacienda la Cantera, 20200 Aguascalientes, Ags.</p>
             </div>
           </div>
         </footer>
       </main>
+
+      <img 
+        src="/images/huella.png" 
+        alt="Secret Empleado" 
+        className="secret-employee-btn" 
+        onClick={handleSecretClick} 
+      />
     </div>
   );
 }
