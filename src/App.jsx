@@ -8,6 +8,9 @@ import Mascotas from './pages/Mascotas';
 import MascotaDetalle from './pages/MascotaDetalle';
 import Citas from './pages/Citas';
 import NuevaCita from './pages/NuevaCita';
+import CitaDetalle from './pages/CitaDetalle';
+import Configuracion from './pages/Configuracion';
+import VerificarCorreo from './pages/VerificarCorreo';
 
 function App() {
   return (
@@ -22,6 +25,9 @@ function App() {
         <Route path="/mascotas/:id" element={<MascotaDetalle />} />
         <Route path="/citas" element={<Citas />} />
         <Route path="/citas/nueva" element={<NuevaCita />} />
+        <Route path="/citas/:id" element={<CitaDetalle />} />
+        <Route path="/configuracion" element={<Configuracion />} />
+        <Route path="/verificar/:token" element={<VerificarCorreo />} />
       </Routes>
     </Router>
   );

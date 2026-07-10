@@ -40,7 +40,7 @@ function Mascotas() {
         : `http://localhost:5000/api/mascotas/usuario/${user.id}`;
         
       console.log(`Haciendo fetch a: ${endpoint}`);
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       const data = await response.json();
       console.log("Respuesta del servidor:", data);
       
@@ -81,7 +81,7 @@ function Mascotas() {
     try {
       const response = await fetch('http://localhost:5000/api/mascotas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usuario_id: user.id,
           ...formData
@@ -112,7 +112,10 @@ function Mascotas() {
         <div className="header-center">
           <h1>Vetcare - {user.rol === 'empleado' ? 'Clientes (Todas las Mascotas)' : 'Mis Mascotas'}</h1>
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link to="/configuracion" state={{ user }}>
+            <img src="/images/user.png" alt="Configuración" style={{ width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', objectFit: 'cover' }} title="Configuración de Perfil" />
+          </Link>
           <Link to="/" className="login-btn" style={{ backgroundColor: '#f44336' }}>Cerrar Sesión</Link>
         </div>
       </header>
@@ -302,7 +305,12 @@ function Mascotas() {
                 <img src="/images/huella.png" alt="Mascota" style={{ width: '100px', height: '100px', objectFit: 'contain', marginBottom: viewMode === 'grid' ? '1rem' : '0' }} />
                 
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#333' }}>{mascota.nombre}</h3>
+                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#333' }}>
+                    {mascota.nombre}
+                    {mascota.activo === false && (
+                      <span style={{ backgroundColor: '#dc3545', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', marginLeft: '10px', verticalAlign: 'middle' }}>Inactiva</span>
+                    )}
+                  </h3>
                   <p style={{ margin: 0, color: '#666', textTransform: 'capitalize' }}>{mascota.tipo}</p>
                 </div>
                 

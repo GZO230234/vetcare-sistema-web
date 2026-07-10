@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Navigate, useNavigate, Link } from 'react-router-dom';
+import { PayPalButtons } from '@paypal/react-paypal-js';
 import '../App.css'; 
 
 function NuevaCita() {
@@ -10,7 +11,8 @@ function NuevaCita() {
   const [mascotas, setMascotas] = useState([]);
   const [formData, setFormData] = useState({
     mascota_id: '',
-    fecha: '',
+    fecha_dia: '',
+    fecha_hora: '',
     descripcion: '',
     estatus_cobro: 'pendiente_efectivo'
   });
@@ -20,7 +22,9 @@ function NuevaCita() {
   useEffect(() => {
     if (user) {
       // Fetch user's mascotas
-      fetch(`http://localhost:5000/api/mascotas/usuario/${user.id}`)
+      fetch(`http://localhost:5000/api/mascotas/usuario/${user.id}`, {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+      })
         .then(res => res.json())
         .then(data => {
           const mascotasArray = data.mascotas || [];
@@ -35,16 +39,25 @@ function NuevaCita() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.estatus_cobro === 'pendiente_paypal') {
+      // Should not reach here if PayPal buttons are used, but just in case
+      return;
+    }
     setError(null);
     setCargando(true);
 
     try {
+      const fechaComb = `${formData.fecha_dia}T${formData.fecha_hora}:00`;
+
       const response = await fetch('http://localhost:5000/api/citas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usuario_id: user.id,
-          ...formData
+          mascota_id: formData.mascota_id,
+          descripcion: formData.descripcion,
+          estatus_cobro: formData.estatus_cobro,
+          fecha: fechaComb
         })
       });
 
@@ -57,6 +70,36 @@ function NuevaCita() {
       }
     } catch (err) {
       setError('Error de conexión');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handlePayPalApprove = async (data, actions) => {
+    setCargando(true);
+    try {
+      const fechaComb = `${formData.fecha_dia}T${formData.fecha_hora}:00`;
+      const response = await fetch('http://localhost:5000/api/citas', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id: user.id,
+          mascota_id: formData.mascota_id,
+          descripcion: formData.descripcion,
+          estatus_cobro: 'pagada_paypal',
+          fecha: fechaComb
+        })
+      });
+
+      const resData = await response.json();
+
+      if (response.ok) {
+        navigate('/citas', { state: { user } });
+      } else {
+        setError(resData.error || 'Error al agendar cita tras el pago');
+      }
+    } catch (err) {
+      setError('Error de conexión al guardar la cita pagada');
     } finally {
       setCargando(false);
     }
@@ -75,7 +118,10 @@ function NuevaCita() {
         <div className="header-center">
           <h1>Agendar Nueva Cita</h1>
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link to="/configuracion" state={{ user }}>
+            <img src="/images/user.png" alt="Configuración" style={{ width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', objectFit: 'cover' }} title="Configuración de Perfil" />
+          </Link>
           <Link to="/" className="login-btn" style={{ backgroundColor: '#f44336' }}>Cerrar Sesión</Link>
         </div>
       </header>
@@ -91,7 +137,7 @@ function NuevaCita() {
                 value={formData.mascota_id} 
                 onChange={(e) => setFormData({...formData, mascota_id: e.target.value})}
                 required
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc' }}
+                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
               >
                 {mascotas.length === 0 ? <option value="">Sin mascotas disponibles</option> : null}
                 {mascotas.map(m => (
@@ -101,14 +147,29 @@ function NuevaCita() {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Fecha y Hora (Mínimo 2 días de anticipación):</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Día (Mínimo 2 días de anticipación):</label>
               <input 
-                type="datetime-local" 
-                value={formData.fecha}
-                onChange={(e) => setFormData({...formData, fecha: e.target.value})}
+                type="date" 
+                value={formData.fecha_dia}
+                onChange={(e) => setFormData({...formData, fecha_dia: e.target.value})}
                 required
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc' }}
+                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
               />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Hora Exacta:</label>
+              <select
+                value={formData.fecha_hora}
+                onChange={(e) => setFormData({...formData, fecha_hora: e.target.value})}
+                required
+                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+              >
+                <option value="">Seleccione...</option>
+                {['12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'].map(hora => (
+                  <option key={hora} value={hora}>{hora}</option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -119,7 +180,7 @@ function NuevaCita() {
                 required
                 rows="4"
                 placeholder="Describe brevemente los síntomas de tu mascota..."
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', resize: 'vertical' }}
+                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box', resize: 'vertical' }}
               />
             </div>
 
@@ -129,31 +190,57 @@ function NuevaCita() {
                 value={formData.estatus_cobro} 
                 onChange={(e) => setFormData({...formData, estatus_cobro: e.target.value})}
                 required
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc' }}
+                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
               >
                 <option value="pendiente_efectivo">Pagar en Efectivo (en sucursal)</option>
-                <option value="pagada_paypal">Pagar con PayPal (Próximamente)</option>
+                <option value="pendiente_paypal">Pagar en línea con PayPal</option>
               </select>
             </div>
 
-            <button 
-              type="submit" 
-              disabled={cargando || mascotas.length === 0}
-              style={{
-                marginTop: '1rem',
-                padding: '1rem',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                cursor: (cargando || mascotas.length === 0) ? 'not-allowed' : 'pointer',
-                opacity: (cargando || mascotas.length === 0) ? 0.7 : 1
-              }}
-            >
-              {cargando ? 'Agendando...' : 'Confirmar Reserva'}
-            </button>
+            {formData.estatus_cobro === 'pendiente_paypal' ? (
+              <div style={{ marginTop: '1rem' }}>
+                <PayPalButtons 
+                  disabled={!formData.fecha_dia || !formData.fecha_hora || !formData.mascota_id || !formData.descripcion}
+                  createOrder={(data, actions) => {
+                    if (!formData.fecha_dia || !formData.fecha_hora || !formData.mascota_id || !formData.descripcion) {
+                      setError('Por favor completa todos los campos del formulario antes de pagar.');
+                      return;
+                    }
+                    setError(null);
+                    return actions.order.create({
+                      purchase_units: [{
+                        description: `Cita veterinaria para mascota ID: ${formData.mascota_id}`,
+                        amount: { value: '30.00' } // Example fixed amount
+                      }]
+                    });
+                  }}
+                  onApprove={handlePayPalApprove}
+                  onError={(err) => {
+                    console.error("PayPal Error:", err);
+                    setError('Error al procesar el pago con PayPal.');
+                  }}
+                />
+              </div>
+            ) : (
+              <button 
+                type="submit" 
+                disabled={cargando || mascotas.length === 0}
+                style={{
+                  marginTop: '1rem',
+                  padding: '1rem',
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  cursor: (cargando || mascotas.length === 0) ? 'not-allowed' : 'pointer',
+                  opacity: (cargando || mascotas.length === 0) ? 0.7 : 1
+                }}
+              >
+                {cargando ? 'Agendando...' : 'Confirmar Reserva'}
+              </button>
+            )}
           </form>
         </div>
       </main>

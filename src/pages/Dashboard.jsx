@@ -9,7 +9,6 @@ function Dashboard() {
   const user = location.state?.user;
   
   const [citas, setCitas] = useState([]);
-  const [detallesCita, setDetallesCita] = useState(null);
   const [citasPorDia, setCitasPorDia] = useState({});
 
   useEffect(() => {
@@ -23,9 +22,11 @@ function Dashboard() {
       const endpoint = user.rol === 'empleado' 
         ? 'http://localhost:5000/api/citas/todas'
         : `http://localhost:5000/api/citas/usuario/${user.id}`;
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       if (response.ok) {
-        const data = await response.json();
+        let data = await response.json();
+        // Ocultar citas que ya fueron atendidas o marcadas como no asistió
+        data = data.filter(cita => cita.estado !== 'atendido' && cita.estado !== 'no_asistio');
         setCitas(data);
         
         // Mapear fechas para el calendario
@@ -57,7 +58,10 @@ function Dashboard() {
         <div className="header-center">
           <h1>Vetcare</h1>
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link to="/configuracion" state={{ user }}>
+            <img src="/images/user.png" alt="Configuración" style={{ width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', objectFit: 'cover' }} title="Configuración de Perfil" />
+          </Link>
           <Link to="/" className="login-btn" style={{ backgroundColor: '#f44336' }}>Cerrar Sesión</Link>
         </div>
       </header>
@@ -134,7 +138,7 @@ function Dashboard() {
                 {proximasCitas.map(cita => (
                   <div 
                     key={cita.id} 
-                    onClick={() => user?.rol === 'empleado' && setDetallesCita(cita)}
+                    onClick={() => user?.rol === 'empleado' && navigate(`/citas/${cita.id}`, { state: { user } })}
                     style={{ 
                       backgroundColor: '#f8f9fa', 
                       padding: '1rem', 
@@ -194,54 +198,6 @@ function Dashboard() {
         </div>
 
       </main>
-
-      {/* Modal Detalles Cita */}
-      {detallesCita && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000
-        }} onClick={() => setDetallesCita(null)}>
-          <div style={{
-            backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '600px', maxWidth: '90%', maxHeight: '90vh', overflowY: 'auto'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, color: '#333' }}>Detalles de la Cita</h2>
-              <button onClick={() => setDetallesCita(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <section>
-                <h3 style={{ color: '#007BFF', borderBottom: '2px solid #007BFF', paddingBottom: '5px' }}>Información de la Cita</h3>
-                <p><strong>Fecha y Hora:</strong> {new Date(detallesCita.fecha).toLocaleString()}</p>
-                <p><strong>Estado:</strong> <span style={{ textTransform: 'capitalize', fontWeight: 'bold', color: detallesCita.estado === 'atendido' ? '#28a745' : '#ffc107' }}>{detallesCita.estado}</span></p>
-                <p><strong>Motivo/Síntomas:</strong> {detallesCita.descripcion}</p>
-                <p><strong>Pago:</strong> {detallesCita.estatus_cobro === 'pagada_paypal' ? 'Pagada (PayPal)' : 'Pendiente (Efectivo)'}</p>
-              </section>
-
-              <section>
-                <h3 style={{ color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px' }}>Información del Cliente</h3>
-                <p><strong>Nombre:</strong> {detallesCita.cliente_nombre} {detallesCita.cliente_apellido}</p>
-                <p><strong>Correo:</strong> {detallesCita.cliente_correo}</p>
-                <p><strong>Teléfono:</strong> {detallesCita.cliente_telefono}</p>
-                <p><strong>Dirección:</strong> {detallesCita.cliente_direccion || 'No registrada'}</p>
-              </section>
-
-              <section>
-                <h3 style={{ color: '#fd7e14', borderBottom: '2px solid #fd7e14', paddingBottom: '5px' }}>Información de la Mascota</h3>
-                <p><strong>Nombre:</strong> {detallesCita.mascota_nombre}</p>
-                <p><strong>Tipo:</strong> {detallesCita.mascota_tipo}</p>
-                <p><strong>Raza:</strong> {detallesCita.mascota_raza || 'No especificada'}</p>
-                <p><strong>Edad:</strong> {detallesCita.mascota_edad}</p>
-                <p><strong>Notas de la mascota:</strong> {detallesCita.mascota_descripcion || 'Ninguna'}</p>
-              </section>
-            </div>
-
-            <div style={{ marginTop: '20px', textAlign: 'right' }}>
-              <button onClick={() => setDetallesCita(null)} style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

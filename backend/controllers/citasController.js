@@ -20,6 +20,31 @@ exports.getTodasCitas = async (req, res) => {
 };
 
 
+exports.getCitaCompletaPorId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      SELECT c.*, 
+             m.nombre as mascota_nombre, m.tipo as mascota_tipo, m.raza as mascota_raza, m.edad as mascota_edad, m.descripcion as mascota_descripcion,
+             u.nombres as cliente_nombre, u.apellidos as cliente_apellido, u.correo as cliente_correo, u.telefono as cliente_telefono, u.direccion as cliente_direccion
+      FROM citas c
+      JOIN mascotas m ON c.mascota_id = m.id
+      JOIN usuarios u ON c.usuario_id = u.id
+      WHERE c.id = $1
+    `;
+    const { rows } = await pool.query(query, [id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Cita no encontrada.' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al obtener cita completa:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 exports.getCitasUsuario = async (req, res) => {
   try {
     const usuarioId = req.params.usuarioId;
@@ -54,6 +79,24 @@ exports.crearCita = async (req, res) => {
       return res.status(400).json({ error: 'La cita debe programarse al menos con 2 días de anticipación.' });
     }
 
+    // Validar hora (12 a 19)
+    const hours = citaDate.getHours();
+    const minutes = citaDate.getMinutes();
+
+    if (hours < 12 || hours > 19 || (hours === 19 && minutes > 0)) {
+      return res.status(400).json({ error: 'El horario de atención es de 12:00 a 19:00.' });
+    }
+
+    if (minutes !== 0 && minutes !== 30) {
+      return res.status(400).json({ error: 'Las citas solo pueden programarse en intervalos de 30 minutos (ej. 12:00, 12:30).' });
+    }
+
+    // Validar colisiones
+    const colisionQuery = await pool.query('SELECT id FROM citas WHERE fecha = $1', [fecha]);
+    if (colisionQuery.rows.length > 0) {
+      return res.status(400).json({ error: 'Este horario ya se encuentra ocupado. Por favor, seleccione otro.' });
+    }
+
     const result = await pool.query(
       `INSERT INTO citas (usuario_id, mascota_id, fecha, descripcion, estatus_cobro) 
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -74,13 +117,18 @@ exports.actualizarCita = async (req, res) => {
     const usuarioId = usuario_id;
 
     // Obtener la cita actual
-    const citaActualQuery = await pool.query('SELECT fecha FROM citas WHERE id = $1 AND usuario_id = $2', [id, usuarioId]);
+    const citaActualQuery = await pool.query('SELECT fecha, estado FROM citas WHERE id = $1 AND usuario_id = $2', [id, usuarioId]);
     
     if (citaActualQuery.rows.length === 0) {
       return res.status(404).json({ error: 'Cita no encontrada o no autorizada.' });
     }
 
     const citaActual = citaActualQuery.rows[0];
+    
+    if (citaActual.estado === 'atendido' || citaActual.estado === 'no_asistio') {
+      return res.status(400).json({ error: 'No se puede editar una cita con estado concluido.' });
+    }
+
     const fechaOriginal = new Date(citaActual.fecha);
     const ahora = new Date();
 
@@ -101,6 +149,25 @@ exports.actualizarCita = async (req, res) => {
       if (parsedFecha < minDate) {
          return res.status(400).json({ error: 'La nueva fecha debe ser al menos con 2 días de anticipación.' });
       }
+
+      // Validar hora (12 a 19)
+      const hours = parsedFecha.getHours();
+      const minutes = parsedFecha.getMinutes();
+
+      if (hours < 12 || hours > 19 || (hours === 19 && minutes > 0)) {
+        return res.status(400).json({ error: 'El horario de atención es de 12:00 a 19:00.' });
+      }
+
+      if (minutes !== 0 && minutes !== 30) {
+        return res.status(400).json({ error: 'Las citas solo pueden programarse en intervalos de 30 minutos (ej. 12:00, 12:30).' });
+      }
+
+      // Validar colisiones ignorando la cita actual
+      const colisionQuery = await pool.query('SELECT id FROM citas WHERE fecha = $1 AND id != $2', [fecha, id]);
+      if (colisionQuery.rows.length > 0) {
+        return res.status(400).json({ error: 'Este horario ya se encuentra ocupado. Por favor, seleccione otro.' });
+      }
+
       nuevaFecha = parsedFecha;
     }
 
@@ -127,6 +194,14 @@ exports.eliminarCita = async (req, res) => {
 
     // Podríamos validar también las 24 horas para eliminar, pero no fue especificado. 
     // Lo dejaremos eliminar libremente o validaremos también las 24 hrs? Asumiremos libre por ahora.
+
+    const citaActualQuery = await pool.query('SELECT estado FROM citas WHERE id = $1 AND usuario_id = $2', [id, usuarioId]);
+    if (citaActualQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Cita no encontrada o no autorizada.' });
+    }
+    if (citaActualQuery.rows[0].estado === 'atendido' || citaActualQuery.rows[0].estado === 'no_asistio') {
+      return res.status(400).json({ error: 'No se puede eliminar una cita con estado concluido.' });
+    }
 
     const { rowCount } = await pool.query('DELETE FROM citas WHERE id = $1 AND usuario_id = $2', [id, usuarioId]);
 
@@ -161,6 +236,30 @@ exports.actualizarEstadoCita = async (req, res) => {
     res.json(rows[0]);
   } catch (error) {
     console.error('Error al actualizar estado:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+exports.actualizarCobroCita = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estatus_cobro } = req.body;
+
+    const updateQuery = `
+      UPDATE citas 
+      SET estatus_cobro = $1
+      WHERE id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(updateQuery, [estatus_cobro, id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Cita no encontrada.' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar estatus de cobro:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

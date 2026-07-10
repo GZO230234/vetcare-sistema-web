@@ -25,6 +25,7 @@ function Login() {
       if (!response.ok) {
         setError(data.error || 'Hubo un error al iniciar sesión.');
       } else {
+        localStorage.setItem('token', data.token);
         // Redirigir al dashboard pasando los datos del usuario
         navigate('/dashboard', { state: { user: data.user } });
       }
@@ -36,8 +37,11 @@ function Login() {
 
   return (
     <div className="auth-container">
-      <div className="auth-box">
-        <h2>Iniciar Sesión en Vetcare</h2>
+      <div className="auth-box" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '15px', left: '20px' }}>
+          <Link to="/" style={{ color: '#007BFF', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>← Volver al inicio</Link>
+        </div>
+        <h2 style={{ marginTop: '20px' }}>Iniciar Sesión en Vetcare</h2>
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

@@ -10,10 +10,9 @@ function Citas() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
-  // Estado para modal de edición y detalles
+  // Estado para modal de edición
   const [editando, setEditando] = useState(null);
-  const [detallesCita, setDetallesCita] = useState(null);
-  const [editFormData, setEditFormData] = useState({ fecha: '', descripcion: '' });
+  const [editFormData, setEditFormData] = useState({ fecha_dia: '', fecha_hora: '', descripcion: '' });
   const [editError, setEditError] = useState(null);
 
   useEffect(() => {
@@ -27,7 +26,7 @@ function Citas() {
       const endpoint = user.rol === 'empleado' 
         ? 'http://localhost:5000/api/citas/todas'
         : `http://localhost:5000/api/citas/usuario/${user.id}`;
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       if (!response.ok) {
         throw new Error('Error al cargar las citas');
       }
@@ -45,6 +44,7 @@ function Citas() {
       try {
         const response = await fetch(`http://localhost:5000/api/citas/${id}?usuario_id=${user.id}`, {
           method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
         });
         if (response.ok) {
           setCitas(citas.filter(cita => cita.id !== id));
@@ -59,10 +59,15 @@ function Citas() {
   };
 
   const handleEstadoChange = async (id, nuevoEstado) => {
+    if (nuevoEstado === 'no_asistio') {
+      const confirmar = window.confirm("¿Estás seguro de marcar esta cita como 'No Asistió'? Esta acción no se puede revertir.");
+      if (!confirmar) return;
+    }
+
     try {
       const response = await fetch(`http://localhost:5000/api/citas/${id}/estado`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: nuevoEstado })
       });
       if (response.ok) {
@@ -78,10 +83,14 @@ function Citas() {
   const abrirEdicion = (cita) => {
     const citaDate = new Date(cita.fecha);
     const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(citaDate - tzoffset)).toISOString().slice(0,16);
+    const localISOTime = (new Date(citaDate - tzoffset)).toISOString();
+    
+    const fecha_dia = localISOTime.slice(0, 10);
+    const fecha_hora = localISOTime.slice(11, 16);
 
     setEditFormData({
-      fecha: localISOTime,
+      fecha_dia: fecha_dia,
+      fecha_hora: fecha_hora,
       descripcion: cita.descripcion
     });
     setEditando(cita.id);
@@ -92,12 +101,13 @@ function Citas() {
     e.preventDefault();
     setEditError(null);
     try {
+      const fechaComb = `${editFormData.fecha_dia}T${editFormData.fecha_hora}:00`;
       const response = await fetch(`http://localhost:5000/api/citas/${editando}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usuario_id: user.id,
-          fecha: editFormData.fecha,
+          fecha: fechaComb,
           descripcion: editFormData.descripcion
         })
       });
@@ -127,7 +137,10 @@ function Citas() {
         <div className="header-center">
           <h1>Vetcare - Citas</h1>
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link to="/configuracion" state={{ user }}>
+            <img src="/images/user.png" alt="Configuración" style={{ width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', objectFit: 'cover' }} title="Configuración de Perfil" />
+          </Link>
           <Link to="/" className="login-btn" style={{ backgroundColor: '#f44336' }}>Cerrar Sesión</Link>
         </div>
       </header>
@@ -167,11 +180,13 @@ function Citas() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
             {citas.map(cita => (
               <div key={cita.id} style={{
-                backgroundColor: 'white',
+                backgroundColor: (cita.estado === 'atendido' || cita.estado === 'no_asistio') ? '#e9ecef' : 'white',
                 padding: '1.5rem',
                 borderRadius: '12px',
                 boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                borderLeft: '5px solid #007BFF'
+                borderLeft: cita.estado === 'atendido' ? '5px solid #6c757d' : (cita.estado === 'no_asistio' ? '5px solid #dc3545' : '5px solid #007BFF'),
+                opacity: (cita.estado === 'atendido' || cita.estado === 'no_asistio') ? 0.7 : 1,
+                filter: (cita.estado === 'atendido' || cita.estado === 'no_asistio') ? 'grayscale(50%)' : 'none'
               }}>
                 <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>
                   Cita para {cita.mascota_nombre} {user?.rol === 'empleado' && cita.cliente_nombre ? `- Cliente: ${cita.cliente_nombre} ${cita.cliente_apellido}` : ''}
@@ -181,45 +196,45 @@ function Citas() {
                 <p>
                   <strong>Estado:</strong>{' '}
                   <span style={{
-                    backgroundColor: cita.estado === 'atendido' ? '#e2e3e5' : '#cce5ff',
-                    color: cita.estado === 'atendido' ? '#383d41' : '#004085',
+                    backgroundColor: cita.estado === 'atendido' ? '#e2e3e5' : (cita.estado === 'no_asistio' ? '#f8d7da' : '#cce5ff'),
+                    color: cita.estado === 'atendido' ? '#383d41' : (cita.estado === 'no_asistio' ? '#721c24' : '#004085'),
                     padding: '3px 8px',
                     borderRadius: '4px',
                     fontSize: '0.85rem'
                   }}>
-                    {cita.estado === 'atendido' ? 'Atendido' : 'En Espera'}
+                    {cita.estado === 'atendido' ? 'Atendido' : (cita.estado === 'no_asistio' ? 'No Asistió' : 'En Espera')}
                   </span>
                 </p>
                 <p>
                   <strong>Pago:</strong>{' '}
                   <span style={{
-                    backgroundColor: cita.estatus_cobro === 'pagada_paypal' ? '#d4edda' : '#fff3cd',
-                    color: cita.estatus_cobro === 'pagada_paypal' ? '#155724' : '#856404',
+                    backgroundColor: cita.estatus_cobro === 'pagada_paypal' ? '#d4edda' : (cita.estatus_cobro === 'pendiente_paypal' ? '#cce5ff' : '#fff3cd'),
+                    color: cita.estatus_cobro === 'pagada_paypal' ? '#155724' : (cita.estatus_cobro === 'pendiente_paypal' ? '#004085' : '#856404'),
                     padding: '3px 8px',
                     borderRadius: '4px',
                     fontSize: '0.85rem'
                   }}>
-                    {cita.estatus_cobro === 'pagada_paypal' ? 'Pagada (PayPal)' : 'Pendiente (Efectivo)'}
+                    {cita.estatus_cobro === 'pagada_paypal' ? 'Pagada (PayPal)' : (cita.estatus_cobro === 'pendiente_paypal' ? 'Pendiente (PayPal)' : 'Pendiente (Efectivo)')}
                   </span>
                 </p>
                 
                 {user?.rol === 'empleado' && cita.estado === 'en espera' && (
                   <div style={{ marginTop: '15px' }}>
-                    <button onClick={() => handleEstadoChange(cita.id, 'atendido')} style={{
-                      width: '100%', backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
-                    }}>Marcar como Atendido</button>
+                    <button onClick={() => handleEstadoChange(cita.id, 'no_asistio')} style={{
+                      width: '100%', backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
+                    }}>Marcar como No Asistió</button>
                   </div>
                 )}
 
                 {user?.rol === 'empleado' && (
                   <div style={{ marginTop: '10px' }}>
-                    <button onClick={() => setDetallesCita(cita)} style={{
+                    <button onClick={() => navigate(`/citas/${cita.id}`, { state: { user } })} style={{
                       width: '100%', backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
                     }}>Ver Detalles Completos</button>
                   </div>
                 )}
                 
-                {user?.rol !== 'empleado' && (
+                {user?.rol !== 'empleado' && cita.estado === 'en espera' && (
                   <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                     <button onClick={() => abrirEdicion(cita)} style={{
                       flex: 1, backgroundColor: '#007BFF', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer'
@@ -227,6 +242,14 @@ function Citas() {
                     <button onClick={() => handleEliminar(cita.id)} style={{
                       flex: 1, backgroundColor: '#f44336', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer'
                     }}>Eliminar</button>
+                  </div>
+                )}
+                
+                {user?.rol !== 'empleado' && (cita.estado === 'atendido' || cita.estado === 'no_asistio') && (
+                  <div style={{ marginTop: '15px' }}>
+                    <p style={{ margin: 0, color: '#6c757d', fontStyle: 'italic', fontSize: '0.9rem', textAlign: 'center' }}>
+                      Cita completada y no modificable.
+                    </p>
                   </div>
                 )}
               </div>
@@ -248,14 +271,28 @@ function Citas() {
             {editError && <p style={{ color: 'red', backgroundColor: '#fee', padding: '10px', borderRadius: '4px' }}>{editError}</p>}
             <form onSubmit={handleEditarSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '5px' }}>Nueva Fecha y Hora:</label>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Día:</label>
                 <input 
-                  type="datetime-local" 
-                  value={editFormData.fecha}
-                  onChange={(e) => setEditFormData({...editFormData, fecha: e.target.value})}
+                  type="date" 
+                  value={editFormData.fecha_dia}
+                  onChange={(e) => setEditFormData({...editFormData, fecha_dia: e.target.value})}
                   required
-                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
                 />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Hora Exacta:</label>
+                <select
+                  value={editFormData.fecha_hora}
+                  onChange={(e) => setEditFormData({...editFormData, fecha_hora: e.target.value})}
+                  required
+                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                >
+                  <option value="">Seleccione...</option>
+                  {['12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'].map(hora => (
+                    <option key={hora} value={hora}>{hora}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '5px' }}>Descripción de síntomas:</label>
@@ -264,7 +301,7 @@ function Citas() {
                   onChange={(e) => setEditFormData({...editFormData, descripcion: e.target.value})}
                   required
                   rows="4"
-                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box', resize: 'vertical' }}
                 />
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -272,53 +309,6 @@ function Citas() {
                 <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '4px', border: 'none', backgroundColor: '#4CAF50', color: 'white', cursor: 'pointer' }}>Guardar</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      {/* Modal Detalles Cita */}
-      {detallesCita && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000
-        }} onClick={() => setDetallesCita(null)}>
-          <div style={{
-            backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '600px', maxWidth: '90%', maxHeight: '90vh', overflowY: 'auto'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, color: '#333' }}>Detalles de la Cita</h2>
-              <button onClick={() => setDetallesCita(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <section>
-                <h3 style={{ color: '#007BFF', borderBottom: '2px solid #007BFF', paddingBottom: '5px' }}>Información de la Cita</h3>
-                <p><strong>Fecha y Hora:</strong> {new Date(detallesCita.fecha).toLocaleString()}</p>
-                <p><strong>Estado:</strong> <span style={{ textTransform: 'capitalize', fontWeight: 'bold', color: detallesCita.estado === 'atendido' ? '#28a745' : '#ffc107' }}>{detallesCita.estado}</span></p>
-                <p><strong>Motivo/Síntomas:</strong> {detallesCita.descripcion}</p>
-                <p><strong>Pago:</strong> {detallesCita.estatus_cobro === 'pagada_paypal' ? 'Pagada (PayPal)' : 'Pendiente (Efectivo)'}</p>
-              </section>
-
-              <section>
-                <h3 style={{ color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px' }}>Información del Cliente</h3>
-                <p><strong>Nombre:</strong> {detallesCita.cliente_nombre} {detallesCita.cliente_apellido}</p>
-                <p><strong>Correo:</strong> {detallesCita.cliente_correo}</p>
-                <p><strong>Teléfono:</strong> {detallesCita.cliente_telefono}</p>
-                <p><strong>Dirección:</strong> {detallesCita.cliente_direccion || 'No registrada'}</p>
-              </section>
-
-              <section>
-                <h3 style={{ color: '#fd7e14', borderBottom: '2px solid #fd7e14', paddingBottom: '5px' }}>Información de la Mascota</h3>
-                <p><strong>Nombre:</strong> {detallesCita.mascota_nombre}</p>
-                <p><strong>Tipo:</strong> {detallesCita.mascota_tipo}</p>
-                <p><strong>Raza:</strong> {detallesCita.mascota_raza || 'No especificada'}</p>
-                <p><strong>Edad:</strong> {detallesCita.mascota_edad}</p>
-                <p><strong>Notas de la mascota:</strong> {detallesCita.mascota_descripcion || 'Ninguna'}</p>
-              </section>
-            </div>
-
-            <div style={{ marginTop: '20px', textAlign: 'right' }}>
-              <button onClick={() => setDetallesCita(null)} style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cerrar</button>
-            </div>
           </div>
         </div>
       )}

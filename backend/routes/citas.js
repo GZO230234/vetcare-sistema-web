@@ -3,9 +3,11 @@ const router = express.Router();
 const citasController = require('../controllers/citasController');
 
 router.get('/todas', citasController.getTodasCitas);
+router.get('/completa/:id', citasController.getCitaCompletaPorId);
 router.get('/usuario/:usuarioId', citasController.getCitasUsuario);
 router.post('/', citasController.crearCita);
 router.put('/:id/estado', citasController.actualizarEstadoCita);
+router.put('/:id/cobro', citasController.actualizarCobroCita);
 router.put('/:id', citasController.actualizarCita);
 router.delete('/:id', citasController.eliminarCita);
 

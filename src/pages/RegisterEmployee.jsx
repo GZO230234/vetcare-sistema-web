@@ -62,7 +62,7 @@ function RegisterEmployee() {
       if (!response.ok) {
         setError(data.error || 'Hubo un error al registrarse.');
       } else {
-        alert('Registro de empleado exitoso. ¡Ahora puedes iniciar sesión!');
+        alert('Registro exitoso. Por favor revisa tu bandeja de entrada para verificar tu cuenta antes de iniciar sesión.');
         navigate('/login');
       }
     } catch (err) {
