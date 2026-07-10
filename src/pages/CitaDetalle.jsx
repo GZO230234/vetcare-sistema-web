@@ -31,7 +31,7 @@ function CitaDetalle() {
 
   const fetchCita = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/citas/completa/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/citas/completa/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       const data = await response.json();
       if (response.ok) {
         setCita(data);
@@ -47,7 +47,7 @@ function CitaDetalle() {
 
   const fetchDiagnosticos = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/diagnosticos/cita/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/diagnosticos/cita/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       const data = await response.json();
       if (response.ok) {
         setDiagnosticos(data);
@@ -69,7 +69,7 @@ function CitaDetalle() {
 
     try {
       // 1. Crear Diagnóstico
-      const diagRes = await fetch('http://localhost:5000/api/diagnosticos', {
+      const diagRes = await fetch(`${import.meta.env.VITE_API_URL}/api/diagnosticos`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +88,7 @@ function CitaDetalle() {
       }
 
       // 2. Cambiar estado de la cita a 'atendido'
-      const estadoRes = await fetch(`http://localhost:5000/api/citas/${cita.id}/estado`, {
+      const estadoRes = await fetch(`${import.meta.env.VITE_API_URL}/api/citas/${cita.id}/estado`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'atendido' })
@@ -115,7 +115,7 @@ function CitaDetalle() {
     try {
       const order = await actions.order.capture();
       
-      const res = await fetch(`http://localhost:5000/api/citas/${id}/cobro`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/citas/${id}/cobro`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({ estatus_cobro: 'pagada_paypal' })

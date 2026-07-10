@@ -20,8 +20,8 @@ function Dashboard() {
   const fetchCitas = async () => {
     try {
       const endpoint = user.rol === 'empleado' 
-        ? 'http://localhost:5000/api/citas/todas'
-        : `http://localhost:5000/api/citas/usuario/${user.id}`;
+        ? `${import.meta.env.VITE_API_URL}/api/citas/todas`
+        : `${import.meta.env.VITE_API_URL}/api/citas/usuario/${user.id}`;
       const response = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       if (response.ok) {
         let data = await response.json();

@@ -22,7 +22,7 @@ function NuevaCita() {
   useEffect(() => {
     if (user) {
       // Fetch user's mascotas
-      fetch(`http://localhost:5000/api/mascotas/usuario/${user.id}`, {
+      fetch(`${import.meta.env.VITE_API_URL}/api/mascotas/usuario/${user.id}`, {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
       })
         .then(res => res.json())
@@ -49,7 +49,7 @@ function NuevaCita() {
     try {
       const fechaComb = `${formData.fecha_dia}T${formData.fecha_hora}:00`;
 
-      const response = await fetch('http://localhost:5000/api/citas', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/citas`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,7 +79,7 @@ function NuevaCita() {
     setCargando(true);
     try {
       const fechaComb = `${formData.fecha_dia}T${formData.fecha_hora}:00`;
-      const response = await fetch('http://localhost:5000/api/citas', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/citas`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({

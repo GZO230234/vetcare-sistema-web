@@ -29,7 +29,7 @@ function Configuracion() {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/user/${currentUser.id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/user/${currentUser.id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       if (response.ok) {
         const data = await response.json();
         setFormData(prev => ({
@@ -74,7 +74,7 @@ function Configuracion() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/user/${currentUser.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/user/${currentUser.id}`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({

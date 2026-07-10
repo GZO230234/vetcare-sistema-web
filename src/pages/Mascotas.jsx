@@ -36,8 +36,8 @@ function Mascotas() {
   const fetchMascotas = async () => {
     try {
       const endpoint = user.rol === 'empleado' 
-        ? 'http://localhost:5000/api/mascotas' 
-        : `http://localhost:5000/api/mascotas/usuario/${user.id}`;
+        ? `${import.meta.env.VITE_API_URL}/api/mascotas` 
+        : `${import.meta.env.VITE_API_URL}/api/mascotas/usuario/${user.id}`;
         
       console.log(`Haciendo fetch a: ${endpoint}`);
       const response = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
@@ -79,7 +79,7 @@ function Mascotas() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/mascotas', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/mascotas`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({

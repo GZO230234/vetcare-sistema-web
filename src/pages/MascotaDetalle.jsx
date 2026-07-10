@@ -26,7 +26,7 @@ function MascotaDetalle() {
 
   const fetchMascota = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/mascotas/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/mascotas/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       const data = await response.json();
       if (response.ok) {
         setMascota(data.mascota);
@@ -43,7 +43,7 @@ function MascotaDetalle() {
 
   const fetchDiagnosticos = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/diagnosticos/mascota/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/diagnosticos/mascota/${id}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       if (response.ok) {
         const data = await response.json();
         setDiagnosticos(data);
@@ -69,7 +69,7 @@ function MascotaDetalle() {
   const handleEditarSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:5000/api/mascotas/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/mascotas/${id}`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify(editFormData)
@@ -88,7 +88,7 @@ function MascotaDetalle() {
   const handleEliminar = async () => {
     if (window.confirm('¿Estás seguro de que quieres eliminar esta mascota? Esta acción no se puede revertir.')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/mascotas/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/mascotas/${id}`, {
           method: 'DELETE'
         });
         const data = await response.json();

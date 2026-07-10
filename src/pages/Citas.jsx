@@ -24,8 +24,8 @@ function Citas() {
   const fetchCitas = async () => {
     try {
       const endpoint = user.rol === 'empleado' 
-        ? 'http://localhost:5000/api/citas/todas'
-        : `http://localhost:5000/api/citas/usuario/${user.id}`;
+        ? `${import.meta.env.VITE_API_URL}/api/citas/todas`
+        : `${import.meta.env.VITE_API_URL}/api/citas/usuario/${user.id}`;
       const response = await fetch(endpoint, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
       if (!response.ok) {
         throw new Error('Error al cargar las citas');
@@ -42,7 +42,7 @@ function Citas() {
   const handleEliminar = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar esta cita?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/citas/${id}?usuario_id=${user.id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/citas/${id}?usuario_id=${user.id}`, {
           method: 'DELETE',
           headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
         });
@@ -65,7 +65,7 @@ function Citas() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/citas/${id}/estado`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/citas/${id}/estado`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: nuevoEstado })
@@ -102,7 +102,7 @@ function Citas() {
     setEditError(null);
     try {
       const fechaComb = `${editFormData.fecha_dia}T${editFormData.fecha_hora}:00`;
-      const response = await fetch(`http://localhost:5000/api/citas/${editando}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/citas/${editando}`, {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
         body: JSON.stringify({
