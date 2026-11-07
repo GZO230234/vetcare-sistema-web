@@ -7,6 +7,7 @@ const mascotasRoutes = require('./routes/mascotas');
 const citasRoutes = require('./routes/citas');
 const diagnosticosRoutes = require('./routes/diagnosticos');
 const authMiddleware = require('./middlewares/authMiddleware');
+const initializeDatabase = require('./initializeDatabase');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,16 @@ app.get('/', (req, res) => {
   res.send('API del Backend de Vetcare funcionando');
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    await initializeDatabase();
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('No se pudo inicializar la base de datos:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
